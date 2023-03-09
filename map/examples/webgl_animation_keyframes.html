@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - animation - keyframes</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+				background-color: #fff;
+				margin: 0px;
+				overflow: hidden;
+			}
+			#info {
+				position: absolute;
+				top: 0px; width: 100%;
+				padding: 5px;
+			}
+			#info p {
+				max-width: 600px;
+				margin-left: auto;
+				margin-right: auto;
+				padding: 0 2em;
+			}
+			a {
+				color: #2983ff;
+			}
+		</style>
+	</head>
+
+	<body>
+
+		<div id="container"></div>
+
+		<script src="js/three.min.js"></script>
+		<script src="js/controls/OrbitControls.js"></script>	
+		<script src="js/loaders/DRACOLoader.js"></script>
+		<script src="js/loaders/GLTFLoader.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/2.1.2/TweenMax.min.js"></script>
+
+		<script>
+
+			var scene, camera, pointLight, stats;
+			var renderer, mixer, controls;
+			var ww = window.innerWidth,
+				hf = window.innerWidth / 2,
+				wh = window.innerHeight;
+
+			var clock = new THREE.Clock();
+			var container = document.getElementById( 'container' );
+
+			renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.gammaOutput = true;
+				renderer.gammaFactor = 2.2;
+				container.appendChild( renderer.domElement );
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xf2f2f2 );
+			camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1, 100 );
+				camera.position.set( 4.9,4.5, 3 );
+				camera.rotation.x = -0.8
+				// console.log(camera.position);
+			// controls = new THREE.OrbitControls( camera, renderer.domElement );
+			// 	controls.target.set( 0, 0.5, 0 );
+			// 	controls.enablePan = false;
+
+			//Lights
+
+
+			// scene.add( new THREE.AmbientLight( 0x404040 ) );
+			var pointLight = new THREE.PointLight( 0xffffff, 0.2);
+				pointLight.position.set(50, 50, 50);
+				scene.add( pointLight );
+				
+			// var ambienLight = new THREE.AmbientLight( 0x404040 ); // soft white light
+			// 	scene.add( ambienLight );
+
+			// var direcctional = new THREE.DirectionalLight( 0xffffff, 0.2 );
+			// scene.add( direcctional );
+			// var light = new THREE.HemisphereLight( 0xffffff, 0x444444 );
+			// 	light.position.set( 0, 20, 0 );
+			// 	scene.add( light );
+			var ambient = new THREE.AmbientLight( 0xffffff, 0.1 );
+				scene.add( ambient );
+				spotLight = new THREE.SpotLight( 0xffffff, 2 );
+				spotLight.position.set( 2, 40, 35 );
+				console.log(spotLight.position);
+				spotLight.angle = Math.PI / 4;
+				spotLight.penumbra = 0.05;
+				spotLight.decay = 2;
+				spotLight.distance = 200;
+				spotLight.castShadow = true;
+				spotLight.shadow.mapSize.width = 1024;
+				spotLight.shadow.mapSize.height = 1024;
+				spotLight.shadow.camera.near = 10;
+				spotLight.shadow.camera.far = 200;
+				scene.add( spotLight );
+				// lightHelper = new THREE.SpotLightHelper( spotLight );
+				// scene.add( lightHelper );
+				// shadowCameraHelper = new THREE.CameraHelper( spotLight.shadow.camera );
+				// scene.add( shadowCameraHelper );
+			
+				//Ground
+				var mesh = new THREE.Mesh( new THREE.PlaneBufferGeometry( 4000, 3000 ), new THREE.MeshPhongMaterial( { color: 0xf2f2f2, depthWrite: false } ) );
+					mesh.rotation.x = - Math.PI / 2;
+					scene.add( mesh );
+				var grid = new THREE.GridHelper( 200, 40, 0xffffff, 0xffffff );
+					grid.material.opacity = 0.2;
+					grid.material.transparent = true;
+					scene.add( grid );
+
+				// RAYCASTER
+				var raycaster = new THREE.Raycaster();
+            	var mouse = new THREE.Vector2();
+			
+
+			THREE.DRACOLoader.setDecoderPath( 'js/libs/draco/gltf/' );
+
+			var loader = new THREE.GLTFLoader();
+				loader.setDRACOLoader( new THREE.DRACOLoader() );
+				loader.load( 'models/gltf/mapa2.gltf', function ( gltf ) {
+
+				var model = gltf.scene;
+					model.position.set( 4.4, 1.5, 2 );
+					model.scale.set( 0.01, 0.01, 0.01 );					
+					model.rotation.set(-1.8,0,0)		
+					console.log(model.rotation);			
+				scene.add( model );
+
+				mixer = new THREE.AnimationMixer( model );
+				mixer.clipAction( gltf.animations[ 0 ] ).play();
+
+				animate();
+
+			}, undefined, function ( e ) {console.error( e );} );
+			
+			function onMouseMove(event) {
+					event.preventDefault();
+
+					mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+					mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+					raycaster.setFromCamera(mouse, camera);
+
+					var intersects = raycaster.intersectObjects(scene.children, true);
+					for (var i = 0; i < intersects.length; i++) {
+						// this.tl = new TimelineMax();
+						// this.tl.to(intersects[i].object.scale, 1, {x: 2, ease: Expo.easeOut})
+						// this.tl.to(intersects[i].object.scale, .5, {x: .5, ease: Expo.easeOut})
+						// this.tl.to(intersects[i].object.position, .5, {x: 2, ease: Expo.easeOut})
+						// this.tl.to(intersects[i].object.rotation, .5, {y: Math.PI*.5, ease: Expo.easeOut}, "=-1.5")
+						console.log(intersects[i]);
+						console.log(intersects[i].object.name);
+
+						// if(intersects[i].object.name == 'mapa_México_polySurface1' || intersects[i].object.name == 'turbina3caja'){
+							
+						// }
+						
+					}
+        }
+
+        
+
+        window.addEventListener('click', onMouseMove);
+
+			window.onresize = function () {
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+			};
+			function animate() {
+				requestAnimationFrame( animate );
+				var delta = clock.getDelta();
+				mixer.update( delta );
+				// controls.update( delta );
+				renderer.render( scene, camera );
+
+			}
+
+
+		</script>
+
+	</body>
+
+</html>
